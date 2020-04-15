@@ -30,6 +30,14 @@ rname =  [
             's8',   's9',  's10', 's11', 't3',  't4',  't5',  't6' 
         ]
 
+# CSR names
+
+def csr_name(which):
+
+    if which in csr_dictionary:
+        return csr_dictionary[which]
+    
+    return "unknown-csr"
 
 #--------------------------------------------------------------------------
 #   RegisterFile: models 32-bit RISC-V register file

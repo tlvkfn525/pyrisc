@@ -99,20 +99,30 @@ class Program(object):
                 return WORD(0)
 
             entry_point = WORD(efh['e_entry'])
-            
             for seg in ef.iter_segments():
                 addr = seg.header['p_vaddr']
                 memsz = seg.header['p_memsz']
                 if seg.header['p_type'] != 'PT_LOAD':
                     continue
-                if addr >= cpu.imem.mem_start and addr + memsz < cpu.imem.mem_end:
-                    mem = cpu.imem
-                elif addr >= cpu.dmem.mem_start and addr + memsz < cpu.dmem.mem_end:
-                    mem = cpu.dmem
+
+                if Log.vmem_activate:
+                    if addr == 0x10000:
+                        cpu.vmem.mem1_init(addr, memsz, WORD_SIZE)
+                        mem = cpu.vmem.mem1
+                    else:
+                        cpu.vmem.mem2_init(addr, memsz, WORD_SIZE)
+                        mem = cpu.vmem.mem2
+                
                 else:
-                    print("Invalid address range: 0x%08x - 0x%08x" \
-                        % (addr, addr + memsz - 1))
-                    continue
+                    if addr >= cpu.imem.mem_start and addr + memsz < cpu.imem.mem_end:
+                        mem = cpu.imem
+                    elif addr >= cpu.dmem.mem_start and addr + memsz < cpu.dmem.mem_end:
+                        mem = cpu.dmem
+                    else:
+                        print("Invalid address range: 0x%08x - 0x%08x" \
+                            % (addr, addr + memsz - 1))
+                        continue
+
                 image = seg.data()
                 for i in range(0, len(image), WORD_SIZE):
                     c = int.from_bytes(image[i:i+WORD_SIZE], byteorder='little')
@@ -122,7 +132,6 @@ class Program(object):
     
     @staticmethod
     def disasm(pc, inst):
-
         if inst == BUBBLE:
             asm = "BUBBLE"
             return asm
@@ -158,8 +167,6 @@ class Program(object):
             asm = "%-7s%s, %d(%s)" % (opname, rname[rd], SWORD(imm_i), rname[rs1])
         elif info[IN_TYPE] == IJ_TYPE:
             asm = "%-7s%s, %s, %d" % (opname, rname[rd], rname[rs1], SWORD(imm_i))
-        elif info[IN_TYPE] == IS_TYPE:
-            asm = "%-7s%s, %s, %d" % (opname, rname[rd], rname[rs1], SWORD(imm_i & 0x1f))
         elif info[IN_TYPE] == U_TYPE:
             asm = "%-7s%s, 0x%05x" % (opname, rname[rd], imm_u)
         elif info[IN_TYPE] == S_TYPE:
@@ -170,6 +177,10 @@ class Program(object):
             asm = "%-7s%s, 0x%08x" % (opname, rname[rd], pc + SWORD(imm_j))
         elif info[IN_TYPE] == X_TYPE:
             return info[IN_NAME]
+        elif info[IN_TYPE] == P_TYPE:
+            asm = "%-7s%s, %s" % (opname, csr_name(inst >> 20), rname[rd])
+        elif info[IN_TYPE] == PI_TYPE:
+            asm = "%-7s%s, %d" % (opname, csr_name(inst >> 20), rs1)
         else:
             asm = "(unknown)"
 
@@ -187,6 +198,8 @@ class Log(object):
 
     level           = 1
     start_cycle     = 0
+
+    vmem_activate   = False
 
 
 #--------------------------------------------------------------------------

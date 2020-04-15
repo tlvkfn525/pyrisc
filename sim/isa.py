@@ -15,6 +15,7 @@
 
 
 from consts import *
+from csrdict import *
 
 
 #--------------------------------------------------------------------------
@@ -56,10 +57,33 @@ BNE         = WORD(0b00000000000000000001000001100011)
 BLT         = WORD(0b00000000000000000100000001100011)
 BGE         = WORD(0b00000000000000000101000001100011)
 BLTU        = WORD(0b00000000000000000110000001100011)
-
 BGEU        = WORD(0b00000000000000000111000001100011)
-ECALL       = WORD(0b00000000000000000000000001110011)
 
+#--------------------------------------------------------------------------
+#   Privilege level Instruction encodings + added instructions
+#--------------------------------------------------------------------------
+
+ECALL       = WORD(0b00000000000000000000000001110011)
+EBREAK      = WORD(0b00000000000100000000000001110011)
+FENCE       = WORD(0b00000000000000000000000000001111)
+SFENCE_VMA  = WORD(0b00010010000000000000000001110011)
+
+MRET        = WORD(0b00110000001000000000000001110011)
+
+CSRRW       = WORD(0b00000000000000000001000001110011)
+CSRRS       = WORD(0b00000000000000000010000001110011)
+CSRRC       = WORD(0b00000000000000000011000001110011)
+
+CSRRWI      = WORD(0b00000000000000000101000001110011)
+CSRRSI      = WORD(0b00000000000000000110000001110011)
+CSRRCI      = WORD(0b00000000000000000111000001110011)
+
+LB          = WORD(0b00000000000000000000000000000011)
+LBU         = WORD(0b00000000000000000100000000000011)
+LH          = WORD(0b00000000000000000001000000000011)
+LHU         = WORD(0b00000000000000000101000000000011)
+SB          = WORD(0b00000000000000000000000000100011)
+SH          = WORD(0b00000000000000000001000000100011)
 
 #--------------------------------------------------------------------------
 #   Instruction masks
@@ -100,54 +124,95 @@ BNE_MASK    = WORD(0b00000000000000000111000001111111)
 BLT_MASK    = WORD(0b00000000000000000111000001111111)
 BGE_MASK    = WORD(0b00000000000000000111000001111111)
 BLTU_MASK   = WORD(0b00000000000000000111000001111111)
-
 BGEU_MASK   = WORD(0b00000000000000000111000001111111)
-ECALL_MASK  = WORD(0b11111111111111111111111111111111)
 
+#--------------------------------------------------------------------------
+#   Privilege level Instruction masks + added instruction masks
+#--------------------------------------------------------------------------
+
+ECALL_MASK      = WORD(0b11111111111111111111111111111111)
+EBREAK_MASK     = WORD(0b11111111111111111111111111111111)
+FENCE_MASK      = WORD(0b00000000000000000111000001111111)
+SFENCE_VMA_MASK = WORD(0b11111110000000000111111111111111)
+
+MRET_MASK       = WORD(0b11111111111111111111111111111111)
+
+CSRRW_MASK      = WORD(0b00000000000000000111000001111111)
+CSRRS_MASK      = WORD(0b00000000000000000111000001111111)
+CSRRC_MASK      = WORD(0b00000000000000000111000001111111)
+
+CSRRWI_MASK     = WORD(0b00000000000000000111000001111111)
+CSRRSI_MASK     = WORD(0b00000000000000000111000001111111)
+CSRRCI_MASK     = WORD(0b00000000000000000111000001111111)
+
+LB_MASK         = WORD(0b00000000000000000111000001111111)
+LBU_MASK        = WORD(0b00000000000000000111000001111111)
+LH_MASK         = WORD(0b00000000000000000111000001111111)
+LHU_MASK        = WORD(0b00000000000000000111000001111111)
+SB_MASK         = WORD(0b00000000000000000111000001111111)
+SH_MASK         = WORD(0b00000000000000000111000001111111)
 
 #--------------------------------------------------------------------------
 #   ISA table
 #--------------------------------------------------------------------------
 
 isa         = { 
-    LW      : [ "lw",       LW_MASK,    IL_TYPE, CL_MEM,  OP1_RS1, OP2_IMI, MEM_LD,   MT_W,  ],
-    SW      : [ "sw",       SW_MASK,    S_TYPE,  CL_MEM,  OP1_RS1, OP2_IMS, MEM_ST,   MT_W,  ],
-    AUIPC   : [ "auipc",    AUIPC_MASK, U_TYPE,  CL_ALU,  OP1_PC,  OP2_IMU, ALU_ADD,  MT_X,  ],
-    LUI     : [ "lui",      LUI_MASK,   U_TYPE,  CL_ALU,  OP1_X,   OP2_IMU, ALU_ADD,  MT_X,  ],
-    ADDI    : [ "addi",     ADDI_MASK,  I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_ADD,  MT_X,  ],
+    LW         : [ "lw",          LW_MASK,          IL_TYPE, CL_MEM,  OP1_RS1, OP2_IMI, MEM_LD,   MT_W,  ],
+    SW         : [ "sw",          SW_MASK,          S_TYPE,  CL_MEM,  OP1_RS1, OP2_IMS, MEM_ST,   MT_W,  ],
+    AUIPC      : [ "auipc",       AUIPC_MASK,       U_TYPE,  CL_ALU,  OP1_PC,  OP2_IMU, ALU_ADD,  MT_X,  ],
+    LUI        : [ "lui",         LUI_MASK,         U_TYPE,  CL_ALU,  OP1_X,   OP2_IMU, ALU_ADD,  MT_X,  ],
+    ADDI       : [ "addi",        ADDI_MASK,        I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_ADD,  MT_X,  ],
 
-    SLLI    : [ "slli",     SLLI_MASK,  IS_TYPE, CL_ALU,  OP1_RS1, OP2_IMI, ALU_SLL,  MT_X,  ],
-    SLTI    : [ "slti",     SLTI_MASK,  I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_SLT,  MT_X,  ],
-    SLTIU   : [ "sltiu",    SLTIU_MASK, I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_SLTU, MT_X,  ],
-    XORI    : [ "xori",     XORI_MASK,  I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_XOR,  MT_X,  ],
-    SRLI    : [ "srli",     SRLI_MASK,  IS_TYPE, CL_ALU,  OP1_RS1, OP2_IMI, ALU_SRL,  MT_X,  ],
+    SLLI       : [ "slli",        SLLI_MASK,        I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_SLL,  MT_X,  ],
+    SLTI       : [ "slti",        SLTI_MASK,        I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_SLT,  MT_X,  ],
+    SLTIU      : [ "sltiu",       SLTIU_MASK,       I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_SLTU, MT_X,  ],
+    XORI       : [ "xori",        XORI_MASK,        I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_XOR,  MT_X,  ],
+    SRLI       : [ "srli",        SRLI_MASK,        I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_SRL,  MT_X,  ],
 
-    SRAI    : [ "srai",     SRAI_MASK,  IS_TYPE, CL_ALU,  OP1_RS1, OP2_IMI, ALU_SRA,  MT_X,  ],
-    ORI     : [ "ori",      ORI_MASK,   I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_OR,   MT_X,  ],
-    ANDI    : [ "andi",     ANDI_MASK,  I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_AND,  MT_X,  ],
-    ADD     : [ "add",      ADD_MASK,   R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_ADD,  MT_X,  ],
-    SUB     : [ "sub",      SUB_MASK,   R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SUB,  MT_X,  ],
+    SRAI       : [ "srai",        SRAI_MASK,        I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_SRA,  MT_X,  ],
+    ORI        : [ "ori",         ORI_MASK,         I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_OR,   MT_X,  ],
+    ANDI       : [ "andi",        ANDI_MASK,        I_TYPE,  CL_ALU,  OP1_RS1, OP2_IMI, ALU_AND,  MT_X,  ],
+    ADD        : [ "add",         ADD_MASK,         R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_ADD,  MT_X,  ],
+    SUB        : [ "sub",         SUB_MASK,         R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SUB,  MT_X,  ],
 
-    SLL     : [ "sll",      SLL_MASK,   R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SLL,  MT_X,  ],
-    SLT     : [ "slt",      SLT_MASK,   R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SLT,  MT_X,  ],
-    SLTU    : [ "sltu",     SLTU_MASK,  R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SLTU, MT_X,  ],
-    XOR     : [ "xor",      XOR_MASK,   R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_XOR,  MT_X,  ],
-    SRL     : [ "srl",      SRL_MASK,   R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SRL,  MT_X,  ],
+    SLL        : [ "sll",         SLL_MASK,         R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SLL,  MT_X,  ],
+    SLT        : [ "slt",         SLT_MASK,         R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SLT,  MT_X,  ],
+    SLTU       : [ "sltu",        SLTU_MASK,        R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SLTU, MT_X,  ],
+    XOR        : [ "xor",         XOR_MASK,         R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_XOR,  MT_X,  ],
+    SRL        : [ "srl",         SRL_MASK,         R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SRL,  MT_X,  ],
 
-    SRA     : [ "sra",      SRA_MASK,   R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SRA,  MT_X,  ],
-    OR      : [ "or",       OR_MASK,    R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_OR,   MT_X,  ],
-    AND     : [ "and",      AND_MASK,   R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_AND,  MT_X,  ],
-    JALR    : [ "jalr",     JALR_MASK,  IJ_TYPE, CL_CTRL, OP1_RS1, OP2_IMI, ALU_ADD,  MT_X,  ],
-    JAL     : [ "jal",      JAL_MASK,   J_TYPE,  CL_CTRL, OP1_RS1, OP2_IMJ, ALU_X,    MT_X,  ],
+    SRA        : [ "sra",         SRA_MASK,         R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_SRA,  MT_X,  ],
+    OR         : [ "or",          OR_MASK,          R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_OR,   MT_X,  ],
+    AND        : [ "and",         AND_MASK,         R_TYPE,  CL_ALU,  OP1_RS1, OP2_RS2, ALU_AND,  MT_X,  ],
+    JALR       : [ "jalr",        JALR_MASK,        IJ_TYPE, CL_CTRL, OP1_RS1, OP2_IMI, ALU_ADD,  MT_X,  ],
+    JAL        : [ "jal",         JAL_MASK,         J_TYPE,  CL_CTRL, OP1_RS1, OP2_IMJ, ALU_X,    MT_X,  ],
 
-    BEQ     : [ "beq",      BEQ_MASK,   B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
-    BNE     : [ "bne",      BNE_MASK,   B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
-    BLT     : [ "blt",      BLT_MASK,   B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
-    BGE     : [ "bge",      BGE_MASK,   B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
-    BLTU    : [ "bltu",     BLTU_MASK,  B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
+    BEQ        : [ "beq",         BEQ_MASK,         B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
+    BNE        : [ "bne",         BNE_MASK,         B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
+    BLT        : [ "blt",         BLT_MASK,         B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
+    BGE        : [ "bge",         BGE_MASK,         B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
+    BLTU       : [ "bltu",        BLTU_MASK,        B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
+    BGEU       : [ "bgeu",        BGEU_MASK,        B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
 
-    BGEU    : [ "bgeu",     BGEU_MASK,  B_TYPE,  CL_CTRL, OP1_RS1, OP2_IMB, ALU_X,    MT_X,  ],
-    ECALL   : [ "ecall",    ECALL_MASK, X_TYPE,  CL_CTRL, OP1_X,   OP2_X,   ALU_X,    MT_X,  ],
+    ECALL      : [ "ecall",       ECALL_MASK,       X_TYPE,  CL_CSR,  OP1_X,   OP2_X,   ALU_X,    MT_X,  ],
+    EBREAK     : [ "ebreak",      EBREAK_MASK,      X_TYPE,  CL_CSR,  OP1_X,   OP2_X,   ALU_X,    MT_X,  ],
+    CSRRW      : [ "csrw",        CSRRW_MASK,       P_TYPE,  CL_CSR,  OP1_RS1, OP2_CSR, ALU_X,    MT_X,  ],
+    CSRRS      : [ "csrrs",       CSRRS_MASK,       P_TYPE,  CL_CSR,  OP1_RS1, OP2_CSR, ALU_X,    MT_X,  ],
+    CSRRC      : [ "csrrc",       CSRRC_MASK,       P_TYPE,  CL_CSR,  OP1_RS1, OP2_CSR, ALU_X,    MT_X,  ],
+    CSRRWI     : [ "csrwi",       CSRRWI_MASK,      PI_TYPE, CL_CSR,  OP1_IMM, OP2_CSR, ALU_X,    MT_X,  ],
+    CSRRSI     : [ "csrrsi",      CSRRWI_MASK,      PI_TYPE, CL_CSR,  OP1_IMM, OP2_CSR, ALU_X,    MT_X,  ],
+    CSRRCI     : [ "csrrci",      CSRRWI_MASK,      PI_TYPE, CL_CSR,  OP1_IMM, OP2_CSR, ALU_X,    MT_X,  ],
+    FENCE      : [ "fence",       FENCE_MASK,       X_TYPE,  CL_CSR,  OP1_X,   OP2_X,   ALU_X,    MT_X,  ],
+    SFENCE_VMA : [ "sfence_vma",  SFENCE_VMA_MASK,  X_TYPE,  CL_CSR,  OP1_RS1, OP2_X,   ALU_X,    MT_X,  ],
+
+    MRET       : [ "mret",        MRET_MASK,        X_TYPE,  CL_CSR,  OP1_X,   OP2_X,   ALU_X,    MT_X,  ],
+
+    LB         : [ "lb",          LB_MASK,          IL_TYPE, CL_MEM,  OP1_RS1, OP2_IMI, MEM_LD,   MT_W,  ],
+    LBU        : [ "lbu",         LBU_MASK,         IL_TYPE, CL_MEM,  OP1_RS1, OP2_IMI, MEM_LD,   MT_W,  ],
+    LH         : [ "lh",          LH_MASK,          IL_TYPE, CL_MEM,  OP1_RS1, OP2_IMI, MEM_LD,   MT_W,  ],
+    LHU        : [ "lhu",         LHU_MASK,         IL_TYPE, CL_MEM,  OP1_RS1, OP2_IMI, MEM_LD,   MT_W,  ],
+    SB         : [ "sb",          SB_MASK,          S_TYPE,  CL_MEM,  OP1_RS1, OP2_IMS, MEM_ST,   MT_W,  ],
+    SH         : [ "sh",          SH_MASK,          S_TYPE,  CL_MEM,  OP1_RS1, OP2_IMS, MEM_ST,   MT_W,  ],
 }
 
 
